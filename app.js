@@ -2,6 +2,8 @@ const express = require("express");
 const path = require("path");
 const { open } = require("sqlite");
 const sqlite3 = require("sqlite3");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 const dbPath = path.join(__dirname, "covid19IndiaPortal.db");
 
@@ -10,9 +12,9 @@ app.use(express.json());
 
 let db = null;
 
-const initializeDBAndServer = () => {
+const initializeDBAndServer = async () => {
   try {
-    db = open({
+    db = await open({
       filename: dbPath,
       driver: sqlite3.Database,
     });
@@ -26,3 +28,34 @@ const initializeDBAndServer = () => {
 };
 
 initializeDBAndServer();
+
+//User Login API
+app.post("/login/", async (request, response) => {
+  const { username, password } = request.body;
+  const checkUserQuery = `
+    SELECT 
+      *
+    FROM 
+      user
+    WHERE 
+      username = '${username}';
+  `;
+  const dbResponse = await db.get(checkUserQuery);
+  if (dbResponse === undefined) {
+    response.status(400);
+    response.send("Invalid user");
+  } else {
+    const isCorrectPassword = await bcrypt.compare(
+      password,
+      dbResponse.password
+    );
+    if (isCorrectPassword === true) {
+      const payload = { username: username };
+      const jwtToken = jwt.sign(payload, "MY_SECRET_TOKEN");
+      response.send({ jwtToken: jwtToken });
+    } else {
+      response.status(400);
+      response.send("Invalid password");
+    }
+  }
+});
