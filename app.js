@@ -59,3 +59,25 @@ app.post("/login/", async (request, response) => {
     }
   }
 });
+
+//User Authentication
+const authorizationToken = (req, res, next) => {
+  let jwtToken;
+  const authHeader = req.headers["authorization"];
+  if (authHeader !== undefined) {
+    jwtToken = authHeader.split(" ")[1];
+  }
+  if (jwtToken === undefined) {
+    res.send(401);
+    res.send("Invalid JWT Token");
+  } else {
+    jwt.verify(jwtToken, "MY_SECRET_TOKEN", async (err, payload) => {
+      if (err) {
+        res.status(401);
+        res.send("Invalid JWT Token");
+      } else {
+        next();
+      }
+    });
+  }
+};
